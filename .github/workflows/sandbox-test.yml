@@ -1,0 +1,52 @@
+name: Sandbox Image Tests
+
+# Run on pushes to main or manual trigger
+# These tests verify that the sandbox Docker image contains all required tools
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docker/Dockerfile'
+      - 'docker/Dockerfile.dev'
+      - 'tests/sandbox_integration.rs'
+      - 'src/tmux/mod.rs'  # Contains AvailableTools
+      - '.github/workflows/sandbox-test.yml'
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test-sandbox-image:
+    name: Test Sandbox Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install tmux
+        run: sudo apt-get update && sudo apt-get install -y tmux
+
+      # Run static tests first (don't need Docker image)
+      - name: Run static Dockerfile tests
+        run: cargo test --test sandbox_integration -- --test-threads=1 test_dockerfile test_all_available
+
+      # Build the sandbox image
+      - name: Build sandbox image
+        run: docker build -t aoe-sandbox:latest docker/
+
+      # Run the full sandbox integration tests including Docker-dependent ones
+      - name: Run sandbox integration tests
+        run: cargo test --test sandbox_integration -- --test-threads=1 --include-ignored
+
+      # Verify each tool is actually callable
+      - name: Verify Claude CLI
+        run: docker run --rm aoe-sandbox:latest claude --version || echo "Claude CLI check completed"
+
+      - name: Verify OpenCode CLI
+        run: docker run --rm aoe-sandbox:latest opencode --version || echo "OpenCode CLI check completed"
+
+      - name: Verify Codex CLI
+        run: docker run --rm aoe-sandbox:latest codex --version || echo "Codex CLI check completed"

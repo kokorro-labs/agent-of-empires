@@ -4,12 +4,148 @@
 //! - Container creation when starting a sandboxed session
 //! - Container cleanup when deleting a sandboxed session
 //! - Docker availability validation
+//! - Tool availability in the sandbox image
 
 use agent_of_empires::docker::{is_daemon_running, is_docker_available, DockerContainer};
 use agent_of_empires::session::{Instance, SandboxInfo, Storage};
+use std::path::PathBuf;
+
+/// Tools that should be available in the sandbox image.
+/// When adding a new tool to AvailableTools, add it here with its:
+/// - name: The tool name (must match AvailableTools field)
+/// - dockerfile_pattern: A pattern that should appear in the Dockerfile install section
+/// - binary: The binary name to check for in the container
+const SANDBOX_TOOLS: &[SandboxTool] = &[
+    SandboxTool {
+        name: "claude",
+        dockerfile_pattern: "claude.ai/install",
+        binary: "claude",
+    },
+    SandboxTool {
+        name: "opencode",
+        dockerfile_pattern: "opencode.ai/install",
+        binary: "opencode",
+    },
+    SandboxTool {
+        name: "codex",
+        dockerfile_pattern: "@openai/codex",
+        binary: "codex",
+    },
+];
+
+struct SandboxTool {
+    name: &'static str,
+    dockerfile_pattern: &'static str,
+    binary: &'static str,
+}
 
 fn docker_available() -> bool {
     is_docker_available() && is_daemon_running()
+}
+
+fn dockerfile_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("docker")
+        .join("Dockerfile")
+}
+
+/// Static test: Verify Dockerfile contains install commands for all supported tools.
+/// This test doesn't require Docker and should always run.
+#[test]
+fn test_dockerfile_installs_all_tools() {
+    let dockerfile = std::fs::read_to_string(dockerfile_path())
+        .expect("Failed to read Dockerfile - is docker/Dockerfile missing?");
+
+    let mut missing_tools = Vec::new();
+
+    for tool in SANDBOX_TOOLS {
+        if !dockerfile.contains(tool.dockerfile_pattern) {
+            missing_tools.push(format!(
+                "Tool '{}' is missing from Dockerfile (expected pattern: '{}')",
+                tool.name, tool.dockerfile_pattern
+            ));
+        }
+    }
+
+    assert!(
+        missing_tools.is_empty(),
+        "Dockerfile is missing install commands for sandbox tools:\n  - {}\n\n\
+         When adding a new tool to AvailableTools:\n\
+         1. Add the install command to docker/Dockerfile\n\
+         2. Add the tool to SANDBOX_TOOLS in tests/sandbox_integration.rs\n\
+         3. Rebuild the Docker image: docker build -t aoe-sandbox:latest docker/",
+        missing_tools.join("\n  - ")
+    );
+}
+
+/// Static test: Verify all tools in AvailableTools have a corresponding SANDBOX_TOOLS entry.
+/// This ensures we don't forget to add new tools to the test coverage.
+#[test]
+fn test_all_available_tools_have_sandbox_entries() {
+    // These must match the fields in AvailableTools struct
+    let available_tool_names = ["claude", "opencode", "codex"];
+
+    let sandbox_tool_names: Vec<&str> = SANDBOX_TOOLS.iter().map(|t| t.name).collect();
+
+    for tool_name in &available_tool_names {
+        assert!(
+            sandbox_tool_names.contains(tool_name),
+            "Tool '{}' is in AvailableTools but not in SANDBOX_TOOLS constant.\n\
+             Add it to SANDBOX_TOOLS in tests/sandbox_integration.rs to ensure \
+             Docker image tests cover this tool.",
+            tool_name
+        );
+    }
+}
+
+/// Runtime test: Verify all tools are actually executable in the sandbox container.
+/// Requires Docker daemon and the aoe-sandbox image to be built.
+#[test]
+#[ignore = "requires Docker daemon and aoe-sandbox image"]
+fn test_sandbox_image_has_all_tools() {
+    if !docker_available() {
+        eprintln!("Skipping: Docker not available");
+        return;
+    }
+
+    let output = std::process::Command::new("docker")
+        .args(["images", "-q", "aoe-sandbox:latest"])
+        .output()
+        .expect("Failed to run docker images command");
+
+    if output.stdout.is_empty() {
+        panic!(
+            "aoe-sandbox:latest image not found. Build it first:\n\
+             docker build -t aoe-sandbox:latest docker/"
+        );
+    }
+
+    let mut failed_tools = Vec::new();
+
+    for tool in SANDBOX_TOOLS {
+        let result = std::process::Command::new("docker")
+            .args(["run", "--rm", "aoe-sandbox:latest", "which", tool.binary])
+            .output();
+
+        match result {
+            Ok(output) if output.status.success() => {
+                // Tool found
+            }
+            _ => {
+                failed_tools.push(tool.name);
+            }
+        }
+    }
+
+    assert!(
+        failed_tools.is_empty(),
+        "The following tools are not available in aoe-sandbox image: {:?}\n\n\
+         This means the Dockerfile install commands may have failed or are incorrect.\n\
+         1. Check docker/Dockerfile for proper install commands\n\
+         2. Rebuild the image: docker build -t aoe-sandbox:latest docker/\n\
+         3. Test manually: docker run --rm aoe-sandbox:latest which <tool>",
+        failed_tools
+    );
 }
 
 #[test]
