@@ -10,6 +10,8 @@ pub fn detect_status_from_content(content: &str, tool: &str, _fg_pid: Option<u32
     let content_lower = content.to_lowercase();
     let effective_tool = if tool == "shell" && is_opencode_content(&content_lower) {
         "opencode"
+    } else if tool == "shell" && is_gemini_content(&content_lower) {
+        "gemini"
     } else if tool == "shell" && is_claude_code_content(&content_lower) {
         "claude"
     } else {
@@ -19,6 +21,7 @@ pub fn detect_status_from_content(content: &str, tool: &str, _fg_pid: Option<u32
     match effective_tool {
         "claude" => detect_claude_status(content),
         "opencode" => detect_opencode_status(&content_lower),
+        "gemini" => detect_gemini_status(&content_lower),
         _ => detect_claude_status(content),
     }
 }
@@ -53,6 +56,20 @@ fn is_claude_code_content(content: &str) -> bool {
         }
     }
     false
+}
+
+fn is_gemini_content(content: &str) -> bool {
+    let gemini_indicators = [
+        "gemini",
+        "ctrl+y yolo",
+        "/memory",
+        "/stats",
+        "/tools",
+        "/mcp",
+        "✦ gemini",
+        "google ai",
+    ];
+    gemini_indicators.iter().any(|ind| content.contains(ind))
 }
 
 pub fn detect_claude_status(content: &str) -> Status {
@@ -230,6 +247,115 @@ pub fn detect_opencode_status(content: &str) -> Status {
 
     // WAITING - Completion indicators + input prompt nearby
     // Only check in last lines
+    let completion_indicators = [
+        "complete",
+        "done",
+        "finished",
+        "ready",
+        "what would you like",
+        "what else",
+        "anything else",
+        "how can i help",
+        "let me know",
+    ];
+    let has_completion = completion_indicators
+        .iter()
+        .any(|ind| last_lines_lower.contains(ind));
+    if has_completion {
+        for line in non_empty_lines.iter().rev().take(10) {
+            let clean = strip_ansi(line).trim().to_string();
+            if clean == ">" || clean == "> " || clean == ">>" {
+                return Status::Waiting;
+            }
+        }
+    }
+
+    Status::Idle
+}
+
+pub fn detect_gemini_status(content: &str) -> Status {
+    let lines: Vec<&str> = content.lines().collect();
+    let non_empty_lines: Vec<&str> = lines
+        .iter()
+        .filter(|l| !l.trim().is_empty())
+        .copied()
+        .collect();
+
+    let last_lines: String = non_empty_lines
+        .iter()
+        .rev()
+        .take(30)
+        .rev()
+        .copied()
+        .collect::<Vec<&str>>()
+        .join("\n");
+    let last_lines_lower = last_lines.to_lowercase();
+
+    // RUNNING: Gemini shows "esc to interrupt" or spinner when busy
+    if last_lines_lower.contains("esc to interrupt")
+        || last_lines_lower.contains("ctrl+c to interrupt")
+    {
+        return Status::Running;
+    }
+
+    for line in &lines {
+        for spinner in SPINNER_CHARS {
+            if line.contains(spinner) {
+                return Status::Running;
+            }
+        }
+    }
+
+    // WAITING: Selection menus
+    if last_lines_lower.contains("enter to select") || last_lines_lower.contains("esc to cancel") {
+        return Status::Waiting;
+    }
+
+    // WAITING: Permission/confirmation prompts
+    let permission_prompts = [
+        "(y/n)",
+        "[y/n]",
+        "continue?",
+        "proceed?",
+        "approve",
+        "allow",
+        "confirm",
+    ];
+    for prompt in &permission_prompts {
+        if last_lines_lower.contains(prompt) {
+            return Status::Waiting;
+        }
+    }
+
+    // WAITING: Numbered menu selections
+    for line in &lines {
+        let trimmed = line.trim();
+        if trimmed.starts_with("❯") && trimmed.len() > 2 {
+            let after_cursor = trimmed.get(3..).unwrap_or("").trim_start();
+            if after_cursor.starts_with("1.")
+                || after_cursor.starts_with("2.")
+                || after_cursor.starts_with("3.")
+            {
+                return Status::Waiting;
+            }
+        }
+    }
+
+    // WAITING: Input prompt at end
+    for line in non_empty_lines.iter().rev().take(10) {
+        let clean_line = strip_ansi(line).trim().to_string();
+        if clean_line == ">" || clean_line == "> " || clean_line == ">>" {
+            return Status::Waiting;
+        }
+        if clean_line.starts_with("> ")
+            && !clean_line.to_lowercase().contains("esc")
+            && clean_line.len() < 100
+        {
+            return Status::Waiting;
+        }
+    }
+
+    // WAITING: Completion indicators + input prompt
     let completion_indicators = [
         "complete",
         "done",

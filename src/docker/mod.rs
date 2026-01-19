@@ -8,6 +8,7 @@ use std::process::Command;
 
 pub const CLAUDE_AUTH_VOLUME: &str = "aoe-claude-auth";
 pub const OPENCODE_AUTH_VOLUME: &str = "aoe-opencode-auth";
+pub const GEMINI_AUTH_VOLUME: &str = "aoe-gemini-auth";
 
 pub fn is_docker_available() -> bool {
     Command::new("docker")
