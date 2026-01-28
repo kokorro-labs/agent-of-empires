@@ -4,7 +4,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use tui_input::backend::crossterm::EventHandler;
 use tui_input::Input;
 
-use super::{HomeView, ViewMode};
+use super::{HomeView, TerminalMode, ViewMode};
 use crate::session::{flatten_tree, list_profiles, Item, Status};
 use crate::tui::app::Action;
 use crate::tui::dialogs::{
@@ -46,6 +46,8 @@ impl HomeView {
                 SettingsAction::Continue => return None,
                 SettingsAction::Close => {
                     self.settings_view = None;
+                    // Refresh config-dependent state in case settings changed
+                    self.refresh_from_config();
                     return None;
                 }
                 SettingsAction::UnsavedChangesWarning => {
@@ -257,6 +259,24 @@ impl HomeView {
                     ViewMode::Terminal => ViewMode::Agent,
                 };
             }
+            KeyCode::Char('c') => {
+                // Toggle container/host terminal mode (only in Terminal view for sandboxed sessions)
+                if self.view_mode == ViewMode::Terminal {
+                    if let Some(id) = &self.selected_session {
+                        if let Some(inst) = self.instance_map.get(id) {
+                            if inst.is_sandboxed() {
+                                let id = id.clone();
+                                self.toggle_terminal_mode(&id);
+                            } else {
+                                self.info_dialog = Some(InfoDialog::new(
+                                    "Not Available",
+                                    "Only sandboxed sessions support container terminals. This session runs directly on the host.",
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
             KeyCode::Char('/') => {
                 self.search_active = true;
                 self.search_query = Input::default();
@@ -391,7 +411,18 @@ impl HomeView {
                     }
                     return match self.view_mode {
                         ViewMode::Agent => Some(Action::AttachSession(id.clone())),
-                        ViewMode::Terminal => Some(Action::AttachTerminal(id.clone())),
+                        ViewMode::Terminal => {
+                            let terminal_mode = if let Some(inst) = self.instance_map.get(id) {
+                                if inst.is_sandboxed() {
+                                    self.get_terminal_mode(id)
+                                } else {
+                                    TerminalMode::Host
+                                }
+                            } else {
+                                TerminalMode::Host
+                            };
+                            Some(Action::AttachTerminal(id.clone(), terminal_mode))
+                        }
                     };
                 } else if let Some(Item::Group { path, .. }) = self.flat_items.get(self.cursor) {
                     let path = path.clone();
