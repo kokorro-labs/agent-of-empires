@@ -96,8 +96,7 @@ async fn test_sound(name: &str) -> Result<()> {
     }
 
     println!("🔊 Playing '{}'...", name);
-    sound::play_sound(name);
-    println!("   (If you don't hear anything, check your audio settings)");
+    sound::play_sound_blocking(name)?;
 
     Ok(())
 }

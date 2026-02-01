@@ -169,6 +169,57 @@ fn find_sound_file(name: &str) -> Option<PathBuf> {
     None
 }
 
+/// Play a sound file by name (blocking version for testing)
+pub fn play_sound_blocking(name: &str) -> Result<(), std::io::Error> {
+    let Some(path) = find_sound_file(name) else {
+        eprintln!("❌ Sound file not found: {}", name);
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("Sound file not found: {}", name),
+        ));
+    };
+
+    let path_str = path.to_string_lossy().to_string();
+    eprintln!("🔊 Playing sound: {} from {}", name, path_str);
+
+    let (cmd, args): (&str, Vec<&str>) = if cfg!(target_os = "macos") {
+        ("afplay", vec![&path_str])
+    } else {
+        let ext = std::path::Path::new(&path_str)
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("wav");
+
+        if ext.eq_ignore_ascii_case("ogg") {
+            ("paplay", vec![&path_str])
+        } else {
+            ("aplay", vec![&path_str])
+        }
+    };
+
+    eprintln!("🎵 Executing: {} {}", cmd, args.join(" "));
+
+    let output = std::process::Command::new(cmd)
+        .args(&args)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped())
+        .output()?;
+
+    if output.status.success() {
+        eprintln!("✓ Sound played successfully");
+        Ok(())
+    } else {
+        eprintln!("❌ Command failed with exit code: {:?}", output.status.code());
+        if !output.stderr.is_empty() {
+            eprintln!("   stderr: {}", String::from_utf8_lossy(&output.stderr));
+        }
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("afplay failed with exit code: {:?}", output.status.code()),
+        ))
+    }
+}
+
 /// Play a sound file by name (fire-and-forget, non-blocking)
 pub fn play_sound(name: &str) {
     let Some(path) = find_sound_file(name) else {
