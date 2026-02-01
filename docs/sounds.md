@@ -32,18 +32,18 @@ Agent of Empires can play sound effects when agent sessions change state, provid
 Agent of Empires can download 10 CC0 (public domain) fantasy/RPG sound effects from GitHub:
 
 ### Default State Transition Sounds
-- `start.ogg` - Spell fire sound (session starting)
-- `running.ogg` - Blade sound (agent actively working)
-- `waiting.ogg` - Misc sound (agent waiting for input)
-- `idle.ogg` - Book sound (agent idle)
-- `error.ogg` - Roar sound (error occurred)
+- `start.wav` - Spell fire sound (session starting)
+- `running.wav` - Blade sound (agent actively working)
+- `waiting.wav` - Misc sound (agent waiting for input)
+- `idle.wav` - Book sound (agent idle)
+- `error.wav` - Roar sound (error occurred)
 
 ### Additional Variety Sounds
-- `spell.ogg` - Alternative spell/magic effect
-- `coins.ogg` - Coin/reward sound
-- `metal.ogg` - Metal impact sound
-- `chain.ogg` - Chain/lock sound
-- `gem.ogg` - Gem/crystal sound
+- `spell.wav` - Alternative spell/magic effect
+- `coins.wav` - Coin/reward sound
+- `metal.wav` - Metal impact sound
+- `chain.wav` - Chain/lock sound
+- `gem.wav` - Gem/crystal sound
 
 All sounds are from the [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) pack by SubspaceAudio.
 
@@ -60,7 +60,7 @@ This downloads and installs 10 CC0 (public domain) fantasy/RPG sounds from the G
 - macOS: `~/.agent-of-empires/sounds/`
 
 **Note:** Requires an internet connection for the initial download. Sounds are downloaded from:
-`https://github.com/njbrake/agent-of-empires/tree/dunanuh/bundled_sounds`
+`https://github.com/njbrake/agent-of-empires/tree/main/bundled_sounds`
 
 ### Install Age of Empires II Sounds
 
@@ -179,7 +179,7 @@ sudo pacman -S alsa-utils pulseaudio
 - **SSH Session**: Audio doesn't work over SSH - you need a local terminal with speakers/headphones
 - Check that sound files exist in `~/.config/agent-of-empires/sounds/`
 - Verify sounds are enabled in Settings
-- Test audio with: `aplay ~/.config/agent-of-empires/sounds/start.ogg` (Linux)
+- Test audio with: `aplay ~/.config/agent-of-empires/sounds/start.wav` (Linux)
 - Check logs: `AGENT_OF_EMPIRES_DEBUG=1 aoe`
 
 **Want Age of Empires II sounds?**

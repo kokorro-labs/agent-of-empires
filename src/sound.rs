@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use crate::session::{get_app_dir, Status};
 
 const GITHUB_SOUNDS_BASE_URL: &str =
-    "https://raw.githubusercontent.com/njbrake/agent-of-empires/dunanuh/bundled_sounds";
+    "https://raw.githubusercontent.com/njbrake/agent-of-empires/main/bundled_sounds";
 
 /// How to select which sound file to play
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
