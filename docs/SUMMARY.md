@@ -25,3 +25,4 @@
 # Contributing
 
 - [Development](development.md)
+- [Credits](credits.md)
