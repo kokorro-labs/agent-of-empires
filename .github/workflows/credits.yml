@@ -16,7 +16,7 @@ jobs:
       cancel-in-progress: false
 
     steps:
-      - name: Checkout credits branch
+      - name: Checkout credit branch
         uses: actions/checkout@v4
         with:
           ref: credit
@@ -81,7 +81,7 @@ jobs:
             fs.writeFileSync('credits.json', JSON.stringify(data, null, 2) + '\n');
             core.setOutput('changed', 'true');
 
-      - name: Commit credits.json to credits branch
+      - name: Commit credits.json to credit branch
         if: steps.update.outputs.changed == 'true'
         run: |
           git config user.name "github-actions[bot]"
