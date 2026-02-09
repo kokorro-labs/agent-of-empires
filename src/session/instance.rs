@@ -787,16 +787,14 @@ impl Instance {
             ));
         }
 
-        let anonymous_volumes: Vec<String> = sandbox_config
-            .volume_ignores
-            .iter()
-            .map(|ignore| format!("{}/{}", workspace_path, ignore))
-            .collect();
-
+        // Add extra_volumes from config (host:container format)
+        // Also collect container paths to filter conflicting volume_ignores later
         tracing::debug!(
             "extra_volumes from config: {:?}",
             sandbox_config.extra_volumes
         );
+        let mut extra_volume_container_paths: std::collections::HashSet<String> =
+            std::collections::HashSet::new();
         for entry in &sandbox_config.extra_volumes {
             let parts: Vec<&str> = entry.splitn(3, ':').collect();
             if parts.len() >= 2 {
@@ -806,6 +804,7 @@ impl Instance {
                     parts[1],
                     parts.get(2) == Some(&"ro")
                 );
+                extra_volume_container_paths.insert(parts[1].to_string());
                 volumes.push(VolumeMount {
                     host_path: parts[0].to_string(),
                     container_path: parts[1].to_string(),
@@ -815,6 +814,25 @@ impl Instance {
                 tracing::warn!("Ignoring malformed extra_volume entry: {}", entry);
             }
         }
+
+        // Filter anonymous_volumes to exclude paths that conflict with extra_volumes
+        // (extra_volumes should take precedence over volume_ignores)
+        // Conflicts include:
+        //   - Exact match: both point to same path
+        //   - Anonymous volume is parent of extra_volume (would shadow the mount)
+        //   - Anonymous volume is inside extra_volume (redundant/conflicting)
+        let anonymous_volumes: Vec<String> = sandbox_config
+            .volume_ignores
+            .iter()
+            .map(|ignore| format!("{}/{}", workspace_path, ignore))
+            .filter(|anon_path| {
+                !extra_volume_container_paths.iter().any(|extra_path| {
+                    anon_path == extra_path
+                        || extra_path.starts_with(&format!("{}/", anon_path))
+                        || anon_path.starts_with(&format!("{}/", extra_path))
+                })
+            })
+            .collect();
 
         Ok(ContainerConfig {
             working_dir: workspace_path,
