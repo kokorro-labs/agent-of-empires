@@ -872,14 +872,6 @@ impl Instance {
         let session = self.tmux_session()?;
 
         if session.exists() {
-            // If pane is dead (exited but preserved by remain-on-exit), respawn it
-            if session.is_pane_dead()? {
-                session.respawn_pane()?;
-                self.status = Status::Starting;
-                self.last_start_time = Some(std::time::Instant::now());
-                return Ok(());
-            }
-
             session.kill()?;
         }
 
