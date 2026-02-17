@@ -108,24 +108,6 @@ impl RuntimeBase {
         self.pull_image(image)
     }
 
-    pub fn ensure_named_volume(&self, name: &str) -> Result<()> {
-        let check = self.command().args(["volume", "inspect", name]).output()?;
-
-        if !check.status.success() {
-            let create = self.command().args(["volume", "create", name]).output()?;
-
-            if !create.status.success() {
-                let stderr = String::from_utf8_lossy(&create.stderr);
-                return Err(DockerError::CommandFailed(format!(
-                    "Failed to create volume {}: {}",
-                    name, stderr
-                )));
-            }
-        }
-
-        Ok(())
-    }
-
     pub fn default_sandbox_image(&self) -> &'static str {
         "ghcr.io/njbrake/aoe-sandbox:latest"
     }
@@ -167,11 +149,6 @@ impl RuntimeBase {
             };
             args.push("-v".to_string());
             args.push(mount);
-        }
-
-        for (vol_name, container_path) in &config.named_volumes {
-            args.push("-v".to_string());
-            args.push(format!("{}:{}", vol_name, container_path));
         }
 
         for path in &config.anonymous_volumes {
@@ -307,7 +284,6 @@ mod tests {
                 container_path: "/container/path".to_string(),
                 read_only: true,
             }],
-            named_volumes: vec![],
             anonymous_volumes: vec![],
             environment: vec![],
             cpu_limit: None,
@@ -330,7 +306,6 @@ mod tests {
                 container_path: "/container/path".to_string(),
                 read_only: true,
             }],
-            named_volumes: vec![],
             anonymous_volumes: vec![],
             environment: vec![],
             cpu_limit: None,
@@ -375,7 +350,6 @@ mod tests {
                 container_path: "/dst".to_string(),
                 read_only: false,
             }],
-            named_volumes: vec![("vol1".to_string(), "/data".to_string())],
             anonymous_volumes: vec!["/tmp/cache".to_string()],
             environment: vec![("KEY".to_string(), "VALUE".to_string())],
             cpu_limit: Some("2".to_string()),
@@ -391,7 +365,6 @@ mod tests {
         assert!(args.contains(&"-w".to_string()));
         assert!(args.contains(&"/workspace/project".to_string()));
         assert!(args.contains(&"/src:/dst".to_string()));
-        assert!(args.contains(&"vol1:/data".to_string()));
         assert!(args.contains(&"/tmp/cache".to_string()));
         assert!(args.contains(&"KEY=VALUE".to_string()));
         assert!(args.contains(&"--cpus".to_string()));

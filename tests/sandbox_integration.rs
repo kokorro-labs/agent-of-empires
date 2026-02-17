@@ -142,7 +142,7 @@ fn test_container_lifecycle() {
     let config = containers::ContainerConfig {
         working_dir: "/workspace".to_string(),
         volumes: vec![],
-        named_volumes: vec![],
+
         anonymous_volumes: vec![],
         environment: vec![],
         cpu_limit: None,
@@ -183,7 +183,7 @@ fn test_container_force_remove() {
     let config = containers::ContainerConfig {
         working_dir: "/workspace".to_string(),
         volumes: vec![],
-        named_volumes: vec![],
+
         anonymous_volumes: vec![],
         environment: vec![],
         cpu_limit: None,

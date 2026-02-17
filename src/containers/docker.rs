@@ -39,10 +39,6 @@ impl ContainerRuntimeInterface for Docker {
         self.base.ensure_image(image)
     }
 
-    fn ensure_named_volume(&self, name: &str) -> Result<()> {
-        self.base.ensure_named_volume(name)
-    }
-
     fn default_sandbox_image(&self) -> &'static str {
         self.base.default_sandbox_image()
     }

@@ -241,7 +241,7 @@ pub struct SandboxConfig {
     #[serde(default)]
     pub mount_ssh: bool,
 
-    /// Custom instruction text appended to the agent's system prompt in sandboxed sessions
+    /// Custom instruction text appended to the agent's system prompt in sandboxed sessions.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub custom_instruction: Option<String>,
 

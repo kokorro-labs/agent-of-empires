@@ -12,12 +12,6 @@ use docker::Docker;
 use enum_dispatch::enum_dispatch;
 use error::Result;
 
-pub const CLAUDE_AUTH_VOLUME: &str = "aoe-claude-auth";
-pub const OPENCODE_AUTH_VOLUME: &str = "aoe-opencode-auth";
-pub const CODEX_AUTH_VOLUME: &str = "aoe-codex-auth";
-pub const VIBE_AUTH_VOLUME: &str = "aoe-vibe-auth";
-pub const GEMINI_AUTH_VOLUME: &str = "aoe-gemini-auth";
-
 #[enum_dispatch(ContainerRuntimeInterface)]
 pub enum ContainerRuntime {
     AppleContainer,
@@ -147,7 +141,6 @@ mod tests {
         let config = ContainerConfig {
             working_dir: "/workspace/myproject".to_string(),
             volumes: vec![],
-            named_volumes: vec![],
             anonymous_volumes: vec![
                 "/workspace/myproject/target".to_string(),
                 "/workspace/myproject/node_modules".to_string(),
@@ -179,7 +172,6 @@ mod tests {
         let config = ContainerConfig {
             working_dir: "/workspace".to_string(),
             volumes: vec![],
-            named_volumes: vec![],
             anonymous_volumes: vec![],
             environment: vec![],
             cpu_limit: None,

@@ -10,7 +10,6 @@ pub struct VolumeMount {
 pub struct ContainerConfig {
     pub working_dir: String,
     pub volumes: Vec<VolumeMount>,
-    pub named_volumes: Vec<(String, String)>,
     pub anonymous_volumes: Vec<String>,
     pub environment: Vec<(String, String)>,
     pub cpu_limit: Option<String>,
@@ -31,8 +30,6 @@ pub trait ContainerRuntimeInterface {
     fn pull_image(&self, image: &str) -> Result<()>;
 
     fn ensure_image(&self, image: &str) -> Result<()>;
-
-    fn ensure_named_volume(&self, name: &str) -> Result<()>;
 
     fn default_sandbox_image(&self) -> &'static str;
 
