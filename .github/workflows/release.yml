@@ -251,6 +251,7 @@ jobs:
       - name: Update homebrew-core formula
         env:
           HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.HOMEBREW_CORE_TOKEN }}
+          HOMEBREW_NO_INSTALL_FROM_API: 1
           VERSION: ${{ needs.release.outputs.version }}
         run: |
           brew tap homebrew/core
